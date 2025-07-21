@@ -22,7 +22,7 @@
  * PIC Pin          ATX Pin             Description
  * 1                9 (purple)          +5V standby, power for PIC
  * 20               any black           Ground
- * 9                16 (green)          ATX power-on
+ * 17               16 (green)          ATX power-on
  * 3                ATX power switch    One of the wires from your power switch
  * 20               ATX power switch    The other wire from your power switch
  * 
@@ -38,14 +38,14 @@
  * ===========================================================================*/
 
 // Device Configuration
-#pragma config FOSC = INTRC_IO  // Use the internal oscillator
-#pragma config WDTE = ON        // Enable the watchdog timer (used for sleep)
-#pragma config CP = OFF         // Disable code protection
-#pragma config MCLRE = ON       // MCLR pin functions as MCLR
-#pragma config IOSCFS = 4MHz    // 4 MHz clock speed
-#pragma config CPSW = OFF       // Self-writable memory code protection off
-#pragma config BOREN = ON       // Brown-out reset enable
-#pragma config DRTEN = OFF      // Device reset timer disabled
+#pragma config FOSC   = INTRC_IO // Use the internal oscillator
+#pragma config WDTE   = ON       // Enable the watchdog timer (used for sleep)
+#pragma config CP     = OFF      // Disable code protection
+#pragma config MCLRE  = ON       // MCLR pin functions as MCLR
+#pragma config IOSCFS = 4MHz     // 4 MHz clock speed
+#pragma config CPSW   = OFF      // Self-writable memory code protection off
+#pragma config BOREN  = ON       // Brown-out reset enable
+#pragma config DRTEN  = OFF      // Device reset timer disabled
 
 //=============================================================================
 // Includes
@@ -76,11 +76,11 @@
 // with a built-in pull-up resistor, so use it.
 #define SWITCH_INPUT        PORTAbits.RA4
 
-// Powers off the ATX power supply by setting RC7 as an input.
-#define POWER_OFF           TRISC = 0b10000000; poweredOn = 0;
+// Powers off the ATX power supply by setting RA2 as an input.
+#define POWER_OFF           TRISA = 0b00010100; poweredOn = 0;
 
-// Powers on the ATX power supply by setting RC7 as an output, pulled low.
-#define POWER_ON            TRISC = 0b00000000; poweredOn = 1;
+// Powers on the ATX power supply by setting RA2 as an output, pulled low.
+#define POWER_ON            TRISA = 0b00010000; poweredOn = 1;
 
 //=============================================================================
 // Variables
@@ -133,7 +133,16 @@ void main(void)
 {
     unsigned char lastButtonState = 0;
     unsigned int holdCount = 0;
-    
+
+    // OPTION Register:
+    // bit 7: Disable PORTA interrupt on change.
+    // bit 6: Enable PORTA weak pull-ups.
+    // bit 5: Timer0 clock source internal clock.
+    // bit 4: Timer0 source edge on falling edge.
+    // bit 3: Pre-scaler assigned to WTD.
+    // bits 0-2: Set 1:2s WDT pre-scaler (doubles watchdog timeout value).
+    OPTION = 0b10011001;
+
     // Disable analog mode on all pins so that we can use them as digital pins.
     ANSEL = 0;
 
@@ -141,20 +150,12 @@ void main(void)
     PORTA = PORTB = PORTC = 0x00;  
     
     // Ensure all unused pins are set to outputs and driven low to save power.
-    TRISA = 0b00010000; // Set only RA4 as input
-    TRISB = 0b00000000; // Set all bits as outputs.
+    TRISA = 0b00010100; // Start off with RA2 and RA4 as inputs.
+    TRISB = 0b00000000; // All bits on port B are outputs.
+    TRISC = 0b00000000; // All bits on port C are outputs.
     
     // Start with the supply off.
     POWER_OFF;
-    
-    // OPTION Register:
-    // bit 7: Disable PORTA interrupt on change.
-    // bit 6: Enable PORTA weak pull-ups.
-    // bit 5: Timer0 clock source internal clock.
-    // bit 4: Timer0 source edge on falling edge.
-    // bit 3: Pre-scaler assigned to WTD.
-    // bits 0-2: Set 1:2 WDT pre-scaler (doubles watchdog timeout value).
-    OPTION = 0b10011001;
     
     // Loop forever.
     while (1)
