@@ -3,8 +3,8 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>AtxPowerSwitch</name>
-            <creation-uuid>01f9edfa-c5e6-4be3-afa8-4be8deea615c</creation-uuid>
+            <name>AtxPowerSwitchPic</name>
+            <creation-uuid>7343c18d-4404-4441-bcc7-709c6911a243</creation-uuid>
             <make-project-type>0</make-project-type>
             <c-extensions>c</c-extensions>
             <cpp-extensions/>

@@ -16,18 +16,18 @@
  * with ease! Simply press the power switch to power on your PC, and then press
  * and hold the power switch for a brief period to power it down. Voila!
  * 
- * AtxPowerSwitch uses only a PIC16F527 (it's what I had handy), and it is easy
- * to wire and connect to your PC:
+ * AtxPowerSwitch uses only a PIC12F675 with no external components, and it is
+ * easy to wire and connect to your PC:
  * 
- * PIC Pin          ATX Pin             Description
+ * PIC Pin          ATX Pin (color)     Description
  * 1                9 (purple)          +5V standby, power for PIC
- * 20               any black           Ground
- * 17               16 (green)          ATX power-on
+ * 8                * (any black)       Ground
+ * 5                16 (green)          ATX power-on
  * 3                ATX power switch    One of the wires from your power switch
- * 20               ATX power switch    The other wire from your power switch
+ * 8                ATX power switch    The other wire from your power switch
  * 
  * To be clear, PIC pin 3 is connected to one of the wires of your ATX power
- * switch (it doesn't matter which), and the other wire of our ATX power switch
+ * switch (it doesn't matter which), and the other wire of your ATX power switch
  * is grounded, wherever is easiest for you to ground it.
  * 
  * AtxPowerSwitch is in low-power sleep mode almost all the time, so it uses
@@ -38,14 +38,13 @@
  * ===========================================================================*/
 
 // Device Configuration
-#pragma config FOSC   = INTRC_IO // Use the internal oscillator
+#pragma config FOSC   = INTRCIO  // Use the internal oscillator with IO on GP4
 #pragma config WDTE   = ON       // Enable the watchdog timer (used for sleep)
-#pragma config CP     = OFF      // Disable code protection
-#pragma config MCLRE  = ON       // MCLR pin functions as MCLR
-#pragma config IOSCFS = 4MHz     // 4 MHz clock speed
-#pragma config CPSW   = OFF      // Self-writable memory code protection off
+#pragma config PWRTE  = ON       // Enable 72 ms power on timer (power-up only)
+#pragma config MCLRE  = OFF      // MCLR pin tied internally to Vdd
 #pragma config BOREN  = ON       // Brown-out reset enable
-#pragma config DRTEN  = OFF      // Device reset timer disabled
+#pragma config CP     = OFF      // Disable code protection
+#pragma config CPD    = OFF      // Disable data memory code protection
 
 //=============================================================================
 // Includes
@@ -63,7 +62,7 @@
 // Utility Defines
 //=============================================================================
 
-// The nominal watchdog timeout value, including pre-scaler, in milliseconds.
+// The nominal watchdog timeout value, including 2x pre-scaler, in milliseconds.
 #define WDT_MS              (18*2)
 
 // The approximate number of times per second we wake and process data.
@@ -74,13 +73,13 @@
 
 // The input used for reading the ATX power switch. RA4 is the only unused input
 // with a built-in pull-up resistor, so use it.
-#define SWITCH_INPUT        PORTAbits.RA4
+#define SWITCH_INPUT        GPIObits.GPIO4
 
-// Powers off the ATX power supply by setting RA2 as an input.
-#define POWER_OFF           TRISA = 0b00010100; poweredOn = 0;
+// Powers off the ATX power supply by setting GP2 as an input.
+#define POWER_OFF           TRISIO2 = 1; poweredOn = 0;
 
-// Powers on the ATX power supply by setting RA2 as an output, pulled low.
-#define POWER_ON            TRISA = 0b00010000; poweredOn = 1;
+// Powers on the ATX power supply by setting GP2 as an output, pulled low.
+#define POWER_ON            TRISIO2 = 0; poweredOn = 1;
 
 //=============================================================================
 // Variables
@@ -135,28 +134,29 @@ void main(void)
     unsigned int holdCount = 0;
 
     // OPTION Register:
-    // bit 7: Disable PORTA interrupt on change.
-    // bit 6: Enable PORTA weak pull-ups.
-    // bit 5: Timer0 clock source internal clock.
-    // bit 4: Timer0 source edge on falling edge.
+    // bit 7: GPIO pull-ups are enabled by individual port latches.
+    // bit 6: Interrupt on falling edge of GP2/INT (we don't care)
+    // bit 5: Internal instruction cycle clock (we don't care)
+    // bit 4: Increment on low-to-high transition on GP2/T0CKI (we don't care)
     // bit 3: Pre-scaler assigned to WTD.
     // bits 0-2: Set 1:2s WDT pre-scaler (doubles watchdog timeout value).
-    OPTION = 0b10011001;
+    OPTION_REG = 0b00001001;
 
     // Disable analog mode on all pins so that we can use them as digital pins.
     ANSEL = 0;
 
-    // Set all outputs to low by default.
-    PORTA = PORTB = PORTC = 0x00;  
-    
-    // Ensure all unused pins are set to outputs and driven low to save power.
-    TRISA = 0b00010100; // Start off with RA2 and RA4 as inputs.
-    TRISB = 0b00000000; // All bits on port B are outputs.
-    TRISC = 0b00000000; // All bits on port C are outputs.
-    
+    // Set all GPIO outputs to 0.
+    GPIO = 0;
+
+    // Completely disable the comparator to use the lowest power possible.
+    CMCON = 0x07;
+
+    // Enable the weak pull-up on our switch input (GP4).
+    WPUbits.WPU4 = 1;    
+
     // Start with the supply off.
     POWER_OFF;
-    
+
     // Loop forever.
     while (1)
     {
@@ -181,12 +181,12 @@ void main(void)
             
             lastButtonState = 1;
         }
-       
+
         // Go to sleep. We'll wake up when the watchdog fires.
         SLEEP();
 
         // Some sources say a NOP is recommended after resuming from sleep. Not
         // sure if this is needed or not, but it doesn't hurt anything.
-        NOP();        
+        NOP();
     }
 }
