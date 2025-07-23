@@ -24,11 +24,7 @@
  * 8                * (any black)       Ground
  * 5                16 (green)          ATX power-on
  * 3                ATX power switch    One of the wires from your power switch
- * 8                ATX power switch    The other wire from your power switch
- * 
- * To be clear, PIC pin 3 is connected to one of the wires of your ATX power
- * switch (it doesn't matter which), and the other wire of your ATX power switch
- * is grounded, wherever is easiest for you to ground it.
+ * 2                ATX power switch    The other wire from your power switch
  * 
  * AtxPowerSwitch is in low-power sleep mode almost all the time, so it uses
  * very little power.
@@ -150,6 +146,9 @@ void main(void)
 
     // Completely disable the comparator to use the lowest power possible.
     CMCON = 0x07;
+    
+    // Set GP5 as an output (it is low) to serve as a ground for the switch.
+    TRISIO5 = 0;
 
     // Enable the weak pull-up on our switch input (GP4).
     WPUbits.WPU4 = 1;    
