@@ -21,10 +21,10 @@
  * 
  * PIC Pin          ATX Pin (color)     Description
  * 1                9 (purple)          +5V standby, power for PIC
- * 8                * (any black)       Ground
- * 5                16 (green)          ATX power-on
- * 3                ATX power switch    One of the wires from your power switch
  * 2                ATX power switch    The other wire from your power switch
+ * 3                ATX power switch    One of the wires from your power switch
+ * 5                16 (green)          ATX power-on
+ * 8                * (any black)       Ground
  * 
  * AtxPowerSwitch is in low-power sleep mode almost all the time, so it uses
  * very little power.
